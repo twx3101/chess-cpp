@@ -1,5 +1,21 @@
 #include <iostream>
 
+
+#include <string>;
+#include <map>;
+
+using std::string;
+
+class ChessBoard{
+  public:
+    ChessBoard();
+    void submitMove(string source_square, string destination_square);
+    void resetBoard();
+  private:
+    map <string, *Piece> chessboard;
+
+};
+
 using namespace std;
 
 #include "ChessBoard.h"
