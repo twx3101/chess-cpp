@@ -1,4 +1,4 @@
-OBJ = Chesspiece.o Chessboard.o ChessMain.o
+OBJ = Chesspiece.o ChessBoard.o ChessMain.o
 EXE = chess
 CXX = g++
 CXXFLAGS = -std=c++11 -Wall -g
@@ -11,9 +11,9 @@ $(EXE): $(OBJ)
 
 Chesspiece.o : Chesspiece.h
 
-Chessboard.o : Chesspiece.h Chessboard.h
+ChessBoard.o : Chesspiece.h ChessBoard.h
 
-ChessMain.o : Chesspiece.h Chessboard.h
+ChessMain.o : Chesspiece.h ChessBoard.h
 
 clean:
 	rm -f $(OBJ) $(EXE)

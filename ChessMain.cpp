@@ -1,10 +1,11 @@
-#include "Chessboard.h"
-#include "Chesspiece.h"
 
 #include <iostream>
 #include <string>
 
 using namespace std;
+
+#include "ChessBoard.h"
+
 
 int main() {
 
