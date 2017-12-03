@@ -215,7 +215,7 @@ void ChessBoard::submitMove(string source_square, string destination_square){
 
           if (checkmate(Black)){
               GameOver = true;
-              cout << "Black is in checkmate \n";
+              cout << "Black is in checkmate\n";
             }
 
           else{
@@ -226,7 +226,7 @@ void ChessBoard::submitMove(string source_square, string destination_square){
           w_check = true;
           if (checkmate(White)){
               GameOver = true;
-              cout << "White is in checkmate \n";
+              cout << "White is in checkmate\n";
             }
           else{
           cout << "White is in check" << endl;
