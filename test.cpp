@@ -95,9 +95,13 @@ class ChessBoard{
     int check_valid_move(string source_square, string destination_square);
     bool check_piece_blocking(int source_rank, int source_file, int destination_rank, int destination_file);
     void update_board(int source_rank, int source_file, int destination_rank, int destination_file, ChessPiece* destination_piece);
-    bool in_check(int checking_piece_rank, int checking_piece_file);
+    void update_future(int source_rank, int source_file, int destination_rank, int destination_file, ChessPiece* destination_piece);
+    bool check_opponent(int checking_piece_rank, int checking_piece_file);
+    bool checkmate(Colour team);
     void resetBoard();
     void print();
+    bool in_check(int source_rank, int source_file, int destination_rank, int destination_file, Colour team);
+    int generate_legal_moves(int source_rank, int source_file, Colour team);
   private:
     array <array<ChessPiece*, 8> ,8 > chessboard;
     Colour turn;
@@ -107,6 +111,9 @@ class ChessBoard{
     int b_king_file;
     int w_king_rank;
     int w_king_file;
+    bool b_check;
+    bool w_check;
+    bool GameOver;
 
 };
 
@@ -115,22 +122,20 @@ class ChessBoard{
 int main(){
   ChessBoard cb;
   cb.print();
-  cb.submitMove("E2","E4");
-	cb.submitMove("D7","D5");
-	cb.submitMove("E1","E2");
-	cb.submitMove("D5","D4");
-	cb.submitMove("H2","H4");
-	cb.submitMove("D4","D3");
+  cb.submitMove("F6", "G6");
 
   return 0;
 }
 
 
 ChessBoard::ChessBoard(){
-  cout << "A new chess game is started!" << endl;
+    cout << "A new chess game is started!" << endl;
 
   turn = White;
   dead = 0;
+  b_check = false;
+  w_check = false;
+  GameOver = false;
 
   int rank;
   int file;
@@ -187,7 +192,40 @@ ChessBoard::ChessBoard(){
       }
     }
   }
-}
+  /*cout << "A new chess game is started!" << endl;
+
+    turn = White;
+    dead = 0;
+    b_check = false;
+    w_check = false;
+    GameOver = false;
+
+    int rank;
+    int file;
+    Colour t;
+
+    b_king_rank = 7;
+    b_king_file = 7;
+    w_king_rank = 6;
+    w_king_file = 5;
+
+    for(rank = 0; rank < 8; rank++){
+        for(file = 0; file < 8; file++){
+          if (rank == 7 && file == 7){
+            chessboard[rank][file] = new King(Black, "King", rank, file);
+          }
+          else if (rank == 6 && file == 5){
+            chessboard[rank][file] = new King(White, "King", rank, file);
+          }
+          else if(rank == 5 && file == 5){
+            chessboard[rank][file] = new Queen(White, "Queen", rank, file);
+          }
+          else{
+            chessboard[rank][file] = NULL;
+          }
+        }
+      }*/
+  }
 
  void ChessBoard::print(){
   int col;
@@ -215,6 +253,11 @@ void ChessBoard::submitMove(string source_square, string destination_square){
   int source_file;
   int destination_rank;
   int destination_file;
+
+  if (GameOver == true){
+    cout << "Game has ended, please restart a new game.\n";
+    return;
+  }
 
   error_code = check_valid_move(source_square, destination_square);
   if (error_code > 0){
@@ -251,26 +294,24 @@ void ChessBoard::submitMove(string source_square, string destination_square){
   valid = source_piece->move(destination_rank, destination_file, destination_piece);
 
   if (valid == true){
-    if(check_piece_blocking(source_rank, source_file, destination_rank, destination_file) ){
-      if (source_piece->get_type() == KING && source_piece->get_team() == White){
-        w_king_rank = destination_rank;
-        w_king_file = destination_file;
+    if(check_piece_blocking(source_rank, source_file, destination_rank, destination_file)){
+      if(in_check(source_rank, source_file, destination_rank, destination_file, turn)){
+        cout << "Your king is still in check! Invalid move" << endl;
+        return;
       }
-      else if(source_piece->get_type() == KING && source_piece->get_team() == White){
-        b_king_rank = destination_rank;
-        b_king_file = destination_file;
-      }
+      else{
+        update_board(source_rank, source_file, destination_rank, destination_file, destination_piece);
+        cout << "Piece moves from " << source_square << " to " << destination_square << endl;
 
-      update_board(source_rank, source_file, destination_rank, destination_file, destination_piece);
-      cout << "Piece moves from " << source_square << " to " << destination_square << endl;
-
-      if(source_piece->get_team() == White && in_check(destination_rank, destination_file)){
-        cout << "Black is in check!" << endl;
+        if(source_piece->get_team() == White && check_opponent(destination_rank, destination_file)){
+          cout << "Black is in check!" << endl;
+          b_check = true;
+        }
+        else if (source_piece->get_team() == Black && check_opponent(destination_rank, destination_file)){
+          cout << "White is in check!" << endl;
+          w_check = true;
+        }
       }
-      else if (source_piece->get_team() == Black && in_check(destination_rank, destination_file)){
-        cout << "White is in check!" << endl;
-      }
-      return;
     }
     else{
       cout << "Can't jump ahead of piece " << source_square << " to " << destination_square << endl;
@@ -282,6 +323,31 @@ void ChessBoard::submitMove(string source_square, string destination_square){
     return;
   }
 
+  if (w_check == true){
+    if (checkmate(White)){
+      cout << "Checkmate! Black wins! \n";
+      GameOver = true;
+    }
+  }
+  else if (b_check == true){
+    if (checkmate(Black)){
+      GameOver = true;
+      cout << "Checkmate! White wins! \n";
+    }
+  }
+  else if ((turn == White && checkmate(Black)) || (turn == Black && checkmate(White))){
+    GameOver = true;
+    cout << "Stalemate! no more moves remaining \n";
+  }
+
+  if (turn == White){
+    turn = Black;
+  }
+  else{
+    turn = White;
+  }
+
+  return;
 
 }
 
@@ -310,6 +376,10 @@ int ChessBoard::check_valid_move(string source_square, string destination_square
 }
 
 bool ChessBoard::check_piece_blocking(int source_rank, int source_file, int destination_rank, int destination_file){
+
+  if(chessboard[destination_rank][destination_file] != NULL && chessboard[destination_rank][destination_file]->get_team() == chessboard[source_rank][source_file]->get_team() ){
+    return false;
+  }
 
   if (chessboard[source_rank][source_file]->get_type() == KNIGHT){
     return true;
@@ -396,37 +466,126 @@ void ChessBoard::update_board(int source_rank, int source_file, int destination_
     chessboard[source_rank][source_file] = NULL;
     dead++;
   }
+
+
   char ans;
   cout << "Print?\n";
   cin >> ans;
   if (ans == 'y'){
     print();
   }
-  if (turn == White){
-    turn = Black;
-  }
-  else{
-    turn = White;
-  }
+  if (turn == White && w_check == true){
+      w_check = false;
+    }
+  else if (b_check == true && turn == Black){
+      b_check = false;
+    }
 }
 
-bool ChessBoard::in_check(int checking_piece_rank, int checking_piece_file){
+void ChessBoard::update_future(int source_rank, int source_file, int destination_rank, int destination_file, ChessPiece* destination_piece){
+  chessboard[destination_rank][destination_file] = chessboard[source_rank][source_file];
+  chessboard[source_rank][source_file] = NULL;
+
+}
+
+
+bool ChessBoard::in_check(int source_rank, int source_file, int destination_rank, int destination_file, Colour team){
+
+
+  array<array<ChessPiece*, 8>, 8> current_chessboard;
+  current_chessboard = chessboard;
+  ChessPiece* source_piece = chessboard[source_rank][source_file];
+  ChessPiece* destination_piece = chessboard[destination_rank][destination_file];
+  int current_k_rank = source_rank;
+  int current_k_file = source_file;
+
+
+  if (source_piece->get_type() == KING && source_piece->get_team() == White){
+
+    w_king_rank = destination_rank;
+    w_king_file = destination_file;
+  }
+  else if(source_piece->get_type() == KING && source_piece->get_team() == Black){
+    b_king_rank = destination_rank;
+    b_king_file = destination_file;
+  }
+
+  update_future(source_rank, source_file, destination_rank, destination_file, destination_piece);
+
+  for(int rank = 0; rank < 8; rank++){
+    for (int file = 0; file < 8; file++){
+      if (chessboard[rank][file] != NULL && chessboard[rank][file]->get_team()!= team){
+        if (check_opponent(rank, file)){
+          if (source_piece->get_type() == KING && source_piece->get_team() == White){
+            w_king_rank = current_k_rank;
+            w_king_file = current_k_file;
+          }
+          else if(source_piece->get_type() == KING && source_piece->get_team() == Black){
+            b_king_rank = current_k_rank;
+            b_king_file = current_k_file;
+          }
+          chessboard = current_chessboard;
+          return true;
+        }
+      }
+
+    }
+  }
+  chessboard = current_chessboard;
+  return false;
+}
+
+bool ChessBoard::check_opponent(int checking_piece_rank, int checking_piece_file){
   ChessPiece* source_piece = chessboard[checking_piece_rank][checking_piece_file];
 
 
   if (source_piece->get_team() == White){
     ChessPiece* B_King = chessboard[b_king_rank][b_king_file];
-    if(source_piece->move(b_king_rank, b_king_file, B_King) && check_piece_blocking(destination_rank, destination_file, b_king_rank, b_king_file)){
+    if(source_piece->move(b_king_rank, b_king_file, B_King) && check_piece_blocking(checking_piece_rank, checking_piece_file, b_king_rank, b_king_file)){
       return true;
     }
   }
   if (source_piece->get_team() == Black){
     ChessPiece* W_King = chessboard[w_king_rank][w_king_file];
-    if(source_piece->move(w_king_rank, w_king_file, W_King) && check_piece_blocking(destination_rank, destination_file, w_king_rank, w_king_file)){
+    if(source_piece->move(w_king_rank, w_king_file, W_King) && check_piece_blocking(checking_piece_rank, checking_piece_file, w_king_rank, w_king_file)){
       return true;
     }
   }
   return false;
+}
+
+bool ChessBoard::checkmate(Colour team){
+  int legal_moves = 0;
+  for (int rank = 0; rank < 8; rank++){
+    for(int file = 0; file < 8; file++){
+      if (chessboard[rank][file] != NULL && chessboard[rank][file]->get_team() != turn){
+        legal_moves += generate_legal_moves(rank, file, team);
+        if (legal_moves > 0){
+          break;
+        }
+      }
+    }
+  }
+  if (legal_moves == 0){
+    return true;
+  }
+  else{
+    return false;
+  }
+}
+
+int ChessBoard::generate_legal_moves(int source_rank, int source_file, Colour team){
+  int legal_moves = 0;
+  ChessPiece* source_piece = chessboard[source_rank][source_file];
+  ChessPiece* destination_piece;
+  for (int rank = 0; rank < 8; rank++){
+    for(int file = 0; file < 8; file++){
+      destination_piece = chessboard[rank][file];
+      if(source_piece->move(rank, file, destination_piece) && check_piece_blocking(source_rank, source_file, rank, file) && !in_check(source_rank, source_file, rank, file, team))
+      legal_moves += 1;
+    }
+  }
+  return legal_moves;
 }
 
 ChessPiece::ChessPiece(Colour bw, string _name, int rank, int file) : team(bw), name(_name), current_rank(rank), current_file(file){};
@@ -439,6 +598,8 @@ void ChessPiece::update_current_location(int destination_rank, int destination_f
   current_rank = destination_rank;
   current_file = destination_file;
 }
+
+
 
 ostream& operator <<(ostream& o, const ChessPiece* a){
   o.width(10);

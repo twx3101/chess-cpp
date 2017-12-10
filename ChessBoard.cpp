@@ -10,40 +10,7 @@ using std::cin;
 
 ChessBoard::ChessBoard(){
   buildBoard();
-  /*cout << "A new chess game is started!" << endl;
-
-    turn = White;
-    dead = 0;
-    b_check = false;
-    w_check = false;
-    GameOver = false;
-
-    int rank;
-    int file;
-    Colour t;
-
-    b_king_rank = 7;
-    b_king_file = 7;
-    w_king_rank = 6;
-    w_king_file = 5;
-
-    for(rank = 0; rank < 8; rank++){
-        for(file = 0; file < 8; file++){
-          if (rank == 7 && file == 7){
-            chessboard[rank][file] = new King(Black, "King", rank, file);
-          }
-          else if (rank == 6 && file == 5){
-            chessboard[rank][file] = new King(White, "King", rank, file);
-          }
-          else if(rank == 5 && file == 5){
-            chessboard[rank][file] = new Queen(White, "Queen", rank, file);
-          }
-          else{
-            chessboard[rank][file] = NULL;
-          }
-        }
-      }*/
-  }
+}
 
 void ChessBoard::buildBoard(){
   cout << "A new chess game is started!" << endl;
@@ -108,6 +75,7 @@ void ChessBoard::buildBoard(){
       }
     }
   }
+  //print();
 }
 
 
@@ -124,6 +92,8 @@ void ChessBoard::resetBoard(){
   }
   buildBoard();
 }
+
+
  void ChessBoard::print(){
   int col;
   int row;
@@ -148,7 +118,7 @@ cout <<  "      ================================================================
 
 void ChessBoard::submitMove(string source_square, string destination_square){
   bool valid;
-  int error_code;
+  bool castling = false;
   int source_rank;
   int source_file;
   int destination_rank;
@@ -159,13 +129,13 @@ void ChessBoard::submitMove(string source_square, string destination_square){
     return;
   }
 
-  error_code = check_valid_move(source_square, destination_square);
-  if (error_code > 0){
+  //check if submitted moves are valid (A-H and 1-8)
+  if (check_valid_move(source_square, destination_square) > 0){
     return;
   }
 
-  source_rank = (source_square[1] - '0') - 1;
-  source_file = char_to_int(source_square[0]);
+  source_rank = (source_square[1] - '0') - 1; //converts rank to int
+  source_file = char_to_int(source_square[0]); //converts file to int
 
   destination_rank = (destination_square[1] - '0') - 1;
   destination_file = char_to_int(destination_square[0]);
@@ -186,28 +156,48 @@ void ChessBoard::submitMove(string source_square, string destination_square){
       cout << "It is not White's turn to move!\n";
     return;
   }
+
   if(destination_piece != NULL && destination_piece->get_team() == turn){
     cout << source_piece << " cannot move to " << destination_square << "!\n";
     return;
   }
 
+  // check if piece can move to its destination due to its class
   valid = source_piece->move(destination_rank, destination_file, destination_piece);
 
+  //check castling
+  if (source_piece->get_type() == KING){
+    if (source_piece->get_first_move() == true && source_rank == destination_rank && abs(destination_file - source_file) == 2){
+      castling = check_castling(source_rank, source_file, destination_rank, destination_file);
+      //if (castling == true){
+      //  valid = true;
+    //  }
+    }
+  }
+
+  // if move is valid
   if (valid == true){
-    if(check_piece_blocking(source_rank, source_file, destination_rank, destination_file)){
+    // if piece is not blocking or castling is true
+    if(check_piece_blocking(source_rank, source_file, destination_rank, destination_file) || castling == true){
+      // if move puts king in check
       if(in_check(source_rank, source_file, destination_rank, destination_file, turn)){
         cout << "Your king is still in check! Invalid move" << endl;
         return;
       }
       else{
-        if(destination_piece == NULL){
+        if(destination_piece == NULL && castling == false){
         update_board(source_rank, source_file, destination_rank, destination_file, destination_piece);
         cout << chessboard[destination_rank][destination_file] << " moves from " << source_square << " to " << destination_square << endl;
         }
-        else{
+        else if(destination_piece != NULL && castling == false){
           update_board(source_rank, source_file, destination_rank, destination_file, destination_piece);
           cout << chessboard[destination_rank][destination_file] << " moves from " << source_square << " to " <<
           destination_square << " taking " << graveyard[dead-1] << endl;
+        }
+        else if(castling == true){
+          update_board(source_rank, source_file, destination_rank, destination_file, destination_piece);
+          cout << chessboard[destination_rank][destination_file] << " moves from " << source_square << " to " << destination_square << " via castling move."<< endl;
+          update_castling(source_rank, source_file, destination_rank, destination_file);
         }
 
         if(source_piece->get_team() == White && check_opponent(destination_rank, destination_file)){
@@ -244,7 +234,7 @@ void ChessBoard::submitMove(string source_square, string destination_square){
     return;
   }
 
-
+  // if black and white are not in check and there are no more legal moves
   if ((turn == White && b_check ==false && checkmate(Black)) || (turn == Black && w_check == false && checkmate(White))){
     GameOver = true;
     cout << "Stalemate! no more moves remaining \n";
@@ -285,6 +275,60 @@ int ChessBoard::check_valid_move(string source_square, string destination_square
   return 0;
 }
 
+bool ChessBoard::check_castling(int source_rank, int source_file, int destination_rank, int destination_file){
+  if (chessboard[destination_rank][destination_file] != NULL){
+    return false;
+  }
+  ChessPiece* source_piece = chessboard[source_rank][source_file];
+
+  //long castling white king
+  if (source_piece->get_type() == KING && source_piece->get_team() == White && chessboard[0][0] != NULL &&
+  chessboard[0][0]->get_type() == ROOK && chessboard[0][0]->get_first_move() == true && w_check == false){
+    if ((destination_rank == source_rank) && (source_file - destination_file == 2)){
+      if(check_piece_blocking(source_rank, source_file, destination_rank, destination_file) &&
+    check_piece_blocking(0,0,0,3) && !in_check(source_rank,source_file, source_rank, source_file-1, White)){
+        return true;
+      }
+    }
+  }
+
+  //short castling white king
+  if (source_piece->get_type() == KING && source_piece->get_team() == White && chessboard[0][7] != NULL &&
+  chessboard[0][7]->get_type() == ROOK && chessboard[0][7]->get_first_move() == true && w_check == false){
+    if ((destination_rank == source_rank) && (destination_file - source_file == 2)){
+      if(check_piece_blocking(source_rank, source_file, destination_rank, destination_file) &&
+    check_piece_blocking(0,7,0,5) && !in_check(source_rank,source_file, source_rank, source_file+1, White)){
+        return true;
+      }
+    }
+  }
+
+  //long castling for black king
+  if (source_piece->get_type() == KING && source_piece->get_team() == Black && chessboard[7][0] != NULL &&
+  chessboard[7][0]->get_type() == ROOK && chessboard[7][0]->get_first_move() == true && b_check == false){
+    if ((destination_rank == source_rank) && (source_file - destination_file == 2)){
+      if( check_piece_blocking(source_rank, source_file, destination_rank, destination_file) &&
+    check_piece_blocking(7,0,7,3) && !in_check(source_rank,source_file, source_rank, source_file-1, Black)){
+        return true;
+      }
+    }
+  }
+
+  //short castling for black king
+  if (source_piece->get_type() == KING && source_piece->get_team() == Black && chessboard[7][7] != NULL &&
+  chessboard[7][7]->get_type() == ROOK && chessboard[7][7]->get_first_move() == true && b_check == false){
+    if ((destination_rank == source_rank) && (destination_file - source_file == 2)){
+      if(check_piece_blocking(source_rank, source_file, destination_rank, destination_file) &&
+    check_piece_blocking(7,7,7,5) && !in_check(source_rank,source_file, source_rank, source_file+1, Black) ){
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+
 bool ChessBoard::check_piece_blocking(int source_rank, int source_file, int destination_rank, int destination_file){
 
   if(chessboard[destination_rank][destination_file] != NULL && chessboard[destination_rank][destination_file]->get_team() == chessboard[source_rank][source_file]->get_team() ){
@@ -295,6 +339,7 @@ bool ChessBoard::check_piece_blocking(int source_rank, int source_file, int dest
     return true;
   }
 
+  //right
   if (source_rank == destination_rank){
     if ((destination_file - source_file) > 0){
       for (int i = 1; i < (destination_file - source_file); i++){
@@ -303,6 +348,7 @@ bool ChessBoard::check_piece_blocking(int source_rank, int source_file, int dest
         }
       }
     }
+    //left
     else if ((destination_file - source_file) < 0){
       for (int i = 1; i < (source_file - destination_file); i++){
         if (chessboard[source_rank][source_file - i] != NULL){
@@ -312,6 +358,7 @@ bool ChessBoard::check_piece_blocking(int source_rank, int source_file, int dest
     }
   }
 
+  //up
   if (source_file == destination_file){
     if ((destination_rank - source_rank) > 0){
       for (int i = 1; i < (destination_rank - source_rank); i++){
@@ -320,6 +367,7 @@ bool ChessBoard::check_piece_blocking(int source_rank, int source_file, int dest
         }
       }
     }
+    //down
     else if ((destination_rank - source_rank) < 0){
       for (int i = 1; i < (source_rank - destination_rank); i++){
         if (chessboard[source_rank - i][source_file] != NULL){
@@ -329,6 +377,7 @@ bool ChessBoard::check_piece_blocking(int source_rank, int source_file, int dest
     }
   }
 
+  //diagonal up right
   if (destination_rank - source_rank > 0 && destination_file - source_file > 0){
     for (int i = 1; i < (destination_rank - source_rank); i++){
       if (chessboard[source_rank + i][source_file + i] != NULL){
@@ -337,6 +386,7 @@ bool ChessBoard::check_piece_blocking(int source_rank, int source_file, int dest
     }
   }
 
+  //diagonal down right
   if (destination_rank - source_rank < 0 && destination_file - source_file > 0){
     for (int i = 1; i < (source_rank - destination_rank); i++){
       if (chessboard[source_rank - i][source_file + i] != NULL){
@@ -345,6 +395,7 @@ bool ChessBoard::check_piece_blocking(int source_rank, int source_file, int dest
     }
   }
 
+  //diagonal up left
   if (destination_rank - source_rank > 0 && destination_file - source_file < 0){
     for (int i = 1; i < (destination_rank - source_rank); i++){
       if (chessboard[source_rank + i][source_file - i] != NULL){
@@ -352,6 +403,7 @@ bool ChessBoard::check_piece_blocking(int source_rank, int source_file, int dest
       }
     }
   }
+  //diagonal down left
   if (destination_rank - source_rank < 0 && destination_file - source_file < 0){
     for (int i = 1; i < (source_rank - destination_rank); i++){
       if (chessboard[source_rank - i][source_file - i] != NULL){
@@ -377,13 +429,14 @@ void ChessBoard::update_board(int source_rank, int source_file, int destination_
     dead++;
   }
 
+  if (chessboard[destination_rank][destination_file]->get_type() == KING || chessboard[destination_rank][destination_file]->get_type() == ROOK ){
+    if (chessboard[destination_rank][destination_file]->get_first_move() == true){
+      chessboard[destination_rank][destination_file]->set_first_move();
+      }
+    }
 
-  /*char ans;
-  cout << "Print?\n";
-  cin >> ans;
-  if (ans == 'y'){
-    print();
-  } */
+// sets check to false if move is valid because it moves King out of check if
+// all tests are passsed
   if (turn == White && w_check == true){
       w_check = false;
     }
@@ -392,10 +445,41 @@ void ChessBoard::update_board(int source_rank, int source_file, int destination_
     }
 }
 
+void ChessBoard::update_castling(int source_rank, int source_file, int destination_rank, int destination_file){
+  if (source_rank == 0){
+    if (destination_file == 2){
+      chessboard[0][0]->update_current_location(0, 3);
+      chessboard[0][3] = chessboard[0][0];
+      chessboard[0][0] = NULL;
+      chessboard[0][3]->set_first_move();
+    }
+    else{
+      chessboard[0][7]->update_current_location(0, 5);
+      chessboard[0][5] = chessboard[0][7];
+      chessboard[0][7] = NULL;
+      chessboard[0][5]->set_first_move();
+    }
+  }
+  if (source_rank == 7){
+    if (destination_file == 2){
+      chessboard[7][0]->update_current_location(7, 3);
+      chessboard[7][3] = chessboard[7][0];
+      chessboard[7][0] = NULL;
+      chessboard[7][3]->set_first_move();
+    }
+    else{
+      chessboard[7][7]->update_current_location(7, 5);
+      chessboard[7][5] = chessboard[7][7];
+      chessboard[7][7] = NULL;
+      chessboard[7][5]->set_first_move();
+    }
+  }
+
+}
+
 void ChessBoard::update_future(int source_rank, int source_file, int destination_rank, int destination_file, ChessPiece* destination_piece){
   chessboard[destination_rank][destination_file] = chessboard[source_rank][source_file];
   chessboard[source_rank][source_file] = NULL;
-
 }
 
 
@@ -409,40 +493,46 @@ bool ChessBoard::in_check(int source_rank, int source_file, int destination_rank
   int current_k_rank = source_rank;
   int current_k_file = source_file;
 
-
+//if moving piece is white king
   if (source_piece->get_type() == KING && source_piece->get_team() == White){
 
     w_king_rank = destination_rank;
     w_king_file = destination_file;
   }
+  //if moving piece is white king
   else if(source_piece->get_type() == KING && source_piece->get_team() == Black){
     b_king_rank = destination_rank;
     b_king_file = destination_file;
   }
 
+  // updates board for future move
   update_future(source_rank, source_file, destination_rank, destination_file, destination_piece);
 
+  //check if future board will lead to king in check
   for(int rank = 0; rank < 8; rank++){
     for (int file = 0; file < 8; file++){
       if (chessboard[rank][file] != NULL && chessboard[rank][file]->get_team()!= team){
         if (check_opponent(rank, file)){
           if (source_piece->get_type() == KING && source_piece->get_team() == White){
+            //reset king position
             w_king_rank = current_k_rank;
             w_king_file = current_k_file;
           }
           else if(source_piece->get_type() == KING && source_piece->get_team() == Black){
+            //reset king position
             b_king_rank = current_k_rank;
             b_king_file = current_k_file;
           }
+          //reset board to before move was made
           chessboard = current_chessboard;
-          return true;
+          return true; //if move leads to king still in check invalid move
         }
       }
 
     }
   }
-  chessboard = current_chessboard;
-  return false;
+  chessboard = current_chessboard; //reset board
+  return false; //valid move
 }
 
 bool ChessBoard::check_opponent(int checking_piece_rank, int checking_piece_file){
@@ -452,7 +542,7 @@ bool ChessBoard::check_opponent(int checking_piece_rank, int checking_piece_file
   if (source_piece->get_team() == White){
     ChessPiece* B_King = chessboard[b_king_rank][b_king_file];
     if(source_piece->move(b_king_rank, b_king_file, B_King) && check_piece_blocking(checking_piece_rank, checking_piece_file, b_king_rank, b_king_file)){
-      return true;
+      return true; // if moving to opponent's king position is valid, return true
     }
   }
   if (source_piece->get_team() == Black){
@@ -492,6 +582,7 @@ int ChessBoard::generate_legal_moves(int source_rank, int source_file, Colour te
     for(int file = 0; file < 8; file++){
       destination_piece = chessboard[rank][file];
       if(source_piece->move(rank, file, destination_piece) && check_piece_blocking(source_rank, source_file, rank, file) && !in_check(source_rank, source_file, rank, file, team))
+      // check if move can put king out of check
       legal_moves += 1;
     }
   }

@@ -78,6 +78,7 @@ int main() {
     cout << endl;
 
     cb.submitMove("D3", "G6");
+    cb.print();
     cout << endl;
 
     return 0;

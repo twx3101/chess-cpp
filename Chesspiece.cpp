@@ -3,6 +3,16 @@
 
 ChessPiece::ChessPiece(Colour bw, string _name, int rank, int file) : team(bw), name(_name), current_rank(rank), current_file(file){};
 
+//Rook Constructor
+Rook::Rook(Colour bw, string _name, int rank, int file) : ChessPiece(bw, _name, rank, file){
+  first_move = true;
+}
+
+//King Constructor
+King::King(Colour bw, string _name, int rank, int file): ChessPiece(bw, _name, rank, file){
+  first_move = true;
+}
+
 Colour ChessPiece::get_team(){
   return team;
 }
@@ -16,11 +26,9 @@ void ChessPiece::update_current_location(int destination_rank, int destination_f
   current_file = destination_file;
 }
 
-
-
 bool Pawn::move(int destination_rank, int destination_file, ChessPiece* destination_piece){
 
-
+  /* Move forward twice possible for first turn */
   if (team == White && current_rank == 1){
     if ((destination_rank - current_rank  == 2) && (destination_file == current_file) && destination_piece == NULL){
       return true;
@@ -32,7 +40,7 @@ bool Pawn::move(int destination_rank, int destination_file, ChessPiece* destinat
     }
   }
 
-
+  /* Move forawrd once */
   if ((team ==  White) && (destination_rank - current_rank) == 1  && (destination_file == current_file) && destination_piece == NULL) {
     return true;
   }
@@ -40,6 +48,7 @@ bool Pawn::move(int destination_rank, int destination_file, ChessPiece* destinat
     return true;
   }
 
+  /* Diagonal movement possible if to take opponent piece */
   if (destination_piece != NULL && destination_piece->get_team() != team){
     if (team == White && (destination_rank - current_rank) == 1  &&  ((destination_file - current_file) == 1 || current_file - destination_file == 1)){
       return true;
@@ -52,21 +61,17 @@ bool Pawn::move(int destination_rank, int destination_file, ChessPiece* destinat
   return false;
 }
 
+
+
 bool Rook::move(int destination_rank, int destination_file, ChessPiece* destination_piece){
   if ((destination_rank - current_rank) != 0 && destination_file == current_file){
-    if (destination_piece == NULL){
+    if ((destination_piece == NULL) || (destination_piece->get_team() != team)) {
     return true;
-    }
-    else if (destination_piece->get_team() != team){
-      return true;
     }
   }
   if ((destination_rank == current_rank) && (destination_file - current_file) != 0){
-    if (destination_piece == NULL){
+    if ((destination_piece == NULL) || (destination_piece->get_team() != team)){
     return true;
-    }
-    else if (destination_piece->get_team() != team){
-      return true;
     }
   }
   return false;
@@ -128,6 +133,7 @@ bool Knight::move(int destination_rank, int destination_file, ChessPiece* destin
   return false;
 }
 
+
 bool King::move(int destination_rank, int destination_file, ChessPiece* destination_piece){
   if (abs(destination_rank - current_rank) == 1  && (destination_file == current_file)) {
       if (destination_piece == NULL || destination_piece->get_team() != team){
@@ -146,13 +152,6 @@ bool King::move(int destination_rank, int destination_file, ChessPiece* destinat
   }
   return false;
 }
-
-int char_to_int(char a){
-  int i;
-  i = static_cast<int>(a - 65);
-  return i;
-}
-
 
 ostream& operator <<(ostream& o, const ChessPiece* a){
   if ( a->team == White){
