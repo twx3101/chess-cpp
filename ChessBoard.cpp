@@ -169,9 +169,9 @@ void ChessBoard::submitMove(string source_square, string destination_square){
   if (source_piece->get_type() == KING){
     if (source_piece->get_first_move() == true && source_rank == destination_rank && abs(destination_file - source_file) == 2){
       castling = check_castling(source_rank, source_file, destination_rank, destination_file);
-      //if (castling == true){
-      //  valid = true;
-    //  }
+      if (castling == true){
+        valid = true;
+      }
     }
   }
 
